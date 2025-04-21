@@ -94,12 +94,11 @@ func (s *Service) List(ctx context.Context, req request.ListPrize) ([]response.L
 		Where("deleted_at IS NULL")
 
 	if req.Search != "" {
-		search := fmt.Sprintf("%" + strings.ToLower(req.Search) + "%")
 		if req.SearchBy != "" {
 			search := strings.ToLower(req.Search)
-			query.Where(fmt.Sprintf("LOWER(p.%s) LIKE ?", req.SearchBy), search)
+			query.Where(fmt.Sprintf("LOWER(p.%s) LIKE ?", req.SearchBy), "%"+search+"%")
 		} else {
-			query.Where("LOWER(p.name) LIKE ?", search)
+			query.Where("p.room_id = ?", req.Search)
 		}
 	}
 
