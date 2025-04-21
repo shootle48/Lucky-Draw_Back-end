@@ -12,6 +12,30 @@ import (
 )
 
 func (s *Service) Create(ctx context.Context, req request.CreateWinner) (*response.ListWinnerDetail, bool, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	defer tx.Rollback()
+
+	drawCondition := model.DrawCondition{}
+	err = tx.NewSelect().
+		Model(&drawCondition).
+		Where("id = ?", req.DrawConditionID).
+		Scan(ctx)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get draw condition: %w", err)
+	}
+
+	prize := model.Prize{}
+	err = tx.NewSelect().
+		Model(&prize).
+		Where("id = ?", req.PrizeID).
+		Where("quantity >= ?", drawCondition.Quantity).
+		Scan(ctx)
+	if err != nil {
+		return nil, true, errors.New("not enough prize quantity")
+	}
 
 	m := &model.Winner{
 		RoomID:          req.RoomID,
@@ -20,36 +44,50 @@ func (s *Service) Create(ctx context.Context, req request.CreateWinner) (*respon
 		DrawConditionID: req.DrawConditionID,
 	}
 
-	_, err := s.db.NewInsert().Model(m).Exec(ctx)
-
+	_, err = tx.NewInsert().Model(m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("winner already exists")
 		}
+		return nil, false, err
+	}
+
+	_, err = tx.NewUpdate().
+		Model((*model.Prize)(nil)).
+		Set("quantity = quantity - ?", drawCondition.Quantity).
+		Where("id = ?", req.PrizeID).
+		Where("quantity >= ?", drawCondition.Quantity).
+		Exec(ctx)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to update prize quantity: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, false, err
 	}
 
 	result := &response.ListWinnerDetail{}
 	err = s.db.NewSelect().
 		TableExpr("winners AS w").
-		ColumnExpr("w.id").
-		ColumnExpr("w.room_id").
+		ColumnExpr("w.id::uuid").
+		ColumnExpr("w.room_id::uuid").
 		ColumnExpr("r.name AS room_name").
-		ColumnExpr("w.player_id").
+		ColumnExpr("w.player_id::uuid").
 		ColumnExpr("p.prefix").
 		ColumnExpr("p.first_name").
 		ColumnExpr("p.last_name").
 		ColumnExpr("p.position").
-		ColumnExpr("w.prize_id").
+		ColumnExpr("w.prize_id::uuid").
 		ColumnExpr("pr.name AS prize_name").
 		ColumnExpr("pr.image_url").
-		ColumnExpr("w.draw_condition_id").
+		ColumnExpr("w.draw_condition_id::uuid").
 		ColumnExpr("dc.filter_status").
 		ColumnExpr("dc.filter_position").
 		ColumnExpr("dc.quantity").
-		Join("JOIN rooms r ON r.id = w.room_id").
-		Join("JOIN players p ON p.id = w.player_id").
-		Join("JOIN prizes pr ON pr.id = w.prize_id").
-		Join("JOIN draw_conditions dc ON dc.id = w.draw_condition_id").
+		Join("JOIN rooms r ON r.id = w.room_id::uuid").
+		Join("JOIN players p ON p.id = w.player_id::uuid").
+		Join("JOIN prizes pr ON pr.id = w.prize_id::uuid").
+		Join("JOIN draw_conditions dc ON dc.id = w.draw_condition_id::uuid").
 		Where("w.id = ?", m.ID).
 		Scan(ctx, result)
 
@@ -57,7 +95,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateWinner) (*respon
 		return nil, false, err
 	}
 
-	return result, false, err
+	return result, false, nil
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateWinner, id request.GetByIDWinner) (*model.Winner, bool, error) {
@@ -109,7 +147,7 @@ func (s *Service) List(ctx context.Context, req request.ListWinner) ([]response.
 			search := strings.ToLower(req.Search)
 			query.Where(fmt.Sprintf("LOWER(w.%s) LIKE ?", req.SearchBy), search)
 		} else {
-			query.Where("LOWER(w.name) LIKE ?", search)
+			query.Where("LOWER(w.id::text) LIKE ?", search)
 		}
 	}
 

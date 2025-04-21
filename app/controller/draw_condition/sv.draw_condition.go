@@ -38,16 +38,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateDrawCondition) (
 		return nil, false, err
 	}
 
-	_, err = s.db.NewUpdate().
-		Model((*model.Prize)(nil)).
-		Set("quantity = quantity - ?", req.Quantity).
-		Where("id = ?", req.PrizeID).
-		Where("quantity >= ?", req.Quantity).
-		Exec(ctx)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to update prize quantity: %w", err)
-	}
-
 	return m, false, nil
 }
 

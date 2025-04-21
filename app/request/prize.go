@@ -1,12 +1,11 @@
 package request
 
 type CreatePrize struct {
-	Name     string `json:"name"`
-	ImageURL string `json:"image_url"`
-	Quantity int64  `json:"quantity"`
-	RoomID   string `json:"room_id"`
+	Name     string `json:"name" binding:"required"`
+	ImageURL string `json:"image_url" binding:"required"`
+	Quantity int64  `json:"quantity" binding:"required,gt=0"`
+	RoomID   string `json:"room_id" binding:"required"`
 }
-
 type UpdatePrize struct {
 	CreatePrize
 }

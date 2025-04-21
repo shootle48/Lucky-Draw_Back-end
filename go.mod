@@ -6,7 +6,7 @@ require (
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/spf13/viper v1.19.0
@@ -15,6 +15,12 @@ require (
 	github.com/uptrace/bun/extra/bundebug v1.2.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.53.0
 	go.uber.org/zap v1.21.0
+)
+
+require (
+	github.com/cloudinary/cloudinary-go/v2 v2.9.1 // indirect
+	github.com/creasty/defaults v1.7.0 // indirect
+	github.com/gorilla/schema v1.4.1 // indirect
 )
 
 require (

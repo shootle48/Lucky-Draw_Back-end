@@ -18,6 +18,7 @@ func Prize(router *gin.RouterGroup) {
 		prize.GET("/list", ctl.PrizeCtl.List)
 		prize.GET("/:id", ctl.PrizeCtl.Get)
 		prize.DELETE("/:id", ctl.PrizeCtl.Delete)
+		prize.POST("/upload", ctl.PrizeCtl.UploadImage)
 
 	}
 }

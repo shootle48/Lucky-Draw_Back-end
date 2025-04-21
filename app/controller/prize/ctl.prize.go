@@ -4,7 +4,11 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
+	"net/http"
+	"os"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/gin-gonic/gin"
 )
 
@@ -125,4 +129,42 @@ func (ctl *Controller) Delete(ctx *gin.Context) {
 		return
 	}
 	response.Success(ctx, nil)
+}
+
+// new function
+func (ctl *Controller) UploadImage(ctx *gin.Context) {
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "no file uploaded"})
+		return
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot open file"})
+		return
+	}
+	defer src.Close()
+
+	cld, err := cloudinary.NewFromParams(
+		os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		os.Getenv("CLOUDINARY_API_KEY"),
+		os.Getenv("CLOUDINARY_API_SECRET"),
+	)
+	if err != nil {
+		logger.Errf("cloudinary config error: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cloudinary config error"})
+		return
+	}
+
+	uploadResult, err := cld.Upload.Upload(ctx, src, uploader.UploadParams{})
+	if err != nil {
+		logger.Errf("upload error: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "upload to cloudinary failed"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"url": uploadResult.SecureURL,
+	})
 }
