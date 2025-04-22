@@ -4,8 +4,10 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
-	"net/http"
+	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
@@ -135,36 +137,49 @@ func (ctl *Controller) Delete(ctx *gin.Context) {
 func (ctl *Controller) UploadImage(ctx *gin.Context) {
 	file, err := ctx.FormFile("file")
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "no file uploaded"})
+		logger.Errf("No file uploaded: %v", err)
+		response.BadRequest(ctx, "กรุณาเลือกไฟล์รูปภาพ")
 		return
 	}
 
+	// เปิดไฟล์
 	src, err := file.Open()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot open file"})
+		logger.Errf("Cannot open uploaded file: %v", err)
+		response.InternalError(ctx, "ไม่สามารถเปิดไฟล์ได้")
 		return
 	}
 	defer src.Close()
 
+	// สร้าง Cloudinary client
 	cld, err := cloudinary.NewFromParams(
 		os.Getenv("CLOUDINARY_CLOUD_NAME"),
 		os.Getenv("CLOUDINARY_API_KEY"),
 		os.Getenv("CLOUDINARY_API_SECRET"),
 	)
 	if err != nil {
-		logger.Errf("cloudinary config error: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cloudinary config error"})
+		logger.Errf("Cloudinary config error: %v", err)
+		response.InternalError(ctx, "การตั้งค่า Cloudinary ไม่ถูกต้อง")
 		return
 	}
 
-	uploadResult, err := cld.Upload.Upload(ctx, src, uploader.UploadParams{})
+	// กำหนด timeout สำหรับ upload
+	uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	// อัปโหลดไปยัง Cloudinary
+	uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
+		Folder:   "prizes",
+		PublicID: fmt.Sprintf("prize_%d", time.Now().UnixNano()), // ตั้งชื่อให้ unique
+	})
 	if err != nil {
-		logger.Errf("upload error: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "upload to cloudinary failed"})
+		logger.Errf("Upload to Cloudinary failed: %v", err)
+		response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	// ส่งกลับ URL
+	response.Success(ctx, gin.H{
 		"url": uploadResult.SecureURL,
 	})
 }
