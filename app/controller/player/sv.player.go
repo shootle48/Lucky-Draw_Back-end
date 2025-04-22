@@ -85,12 +85,11 @@ func (s *Service) List(ctx context.Context, req request.ListPlayer) ([]response.
 		Where("p.deleted_at IS NULL")
 
 	if req.Search != "" {
-		search := fmt.Sprintf("%" + strings.ToLower(req.Search) + "%")
 		if req.SearchBy != "" {
 			search := strings.ToLower(req.Search)
-			query.Where(fmt.Sprintf("LOWER(p.%s) LIKE ?", req.SearchBy), search)
+			query.Where(fmt.Sprintf("LOWER(p.%s) LIKE ?", req.SearchBy), "%"+search+"%")
 		} else {
-			query.Where("LOWER(p.first_name) LIKE ?", search)
+			query.Where("p.room_id = ?", req.Search)
 		}
 	}
 
@@ -145,16 +144,21 @@ func (s *Service) ImportPlayersFromCSV(ctx context.Context, file io.Reader, room
 		return err
 	}
 
+	var failedLines []string
+	lineNumber := 2 // เริ่มจาก 2 เพราะแถวแรกคือ header
+
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("error reading CSV on line %d: %v", lineNumber, err)
 		}
 
 		if len(record) < 5 {
+			failedLines = append(failedLines, fmt.Sprintf("line %d: not enough columns", lineNumber))
+			lineNumber++
 			continue
 		}
 
@@ -168,11 +172,20 @@ func (s *Service) ImportPlayersFromCSV(ctx context.Context, file io.Reader, room
 			IsActive:  false,
 		}
 
-		// insert and skip duplicate
 		_, err = s.db.NewInsert().Model(player).Exec(ctx)
-		if err != nil && !strings.Contains(err.Error(), "duplicate key value") {
-			return errors.New("failed to insert some data")
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value") {
+				failedLines = append(failedLines, fmt.Sprintf("line %d: duplicate member_id (%s)", lineNumber, player.MemberID))
+			} else {
+				failedLines = append(failedLines, fmt.Sprintf("line %d: %v", lineNumber, err))
+			}
 		}
+
+		lineNumber++
+	}
+
+	if len(failedLines) > 0 {
+		return fmt.Errorf("some rows failed to import:\n%s", strings.Join(failedLines, "\n"))
 	}
 
 	return nil
