@@ -26,7 +26,7 @@ type GetByIDDrawCondition struct {
 }
 
 type PreviewPlayers struct {
-	RoomID         string `json:"room_id" binding:"required"`
-	FilterStatus   string `json:"filter_status"`
-	FilterPosition string `json:"filter_position"`
+	RoomID         string   `json:"room_id" binding:"required"`
+	FilterStatus   string   `json:"filter_status"`
+	FilterPosition []string `json:"filter_position"`
 }

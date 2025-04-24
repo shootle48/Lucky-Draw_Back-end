@@ -143,7 +143,7 @@ func (s *Service) PreviewPlayer(ctx context.Context, req request.PreviewPlayers)
 		Where("p.room_id = ?", req.RoomID).
 		Where("p.deleted_at IS NULL")
 
-	if req.FilterPosition != "" {
+	if len(req.FilterPosition) > 0 {
 		query = query.Where("p.position = ?", req.FilterPosition)
 	}
 
