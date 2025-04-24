@@ -142,5 +142,6 @@ func (ctl *Controller) PreviewPlayer(ctx *gin.Context) {
 		response.InternalError(ctx, err.Error())
 		return
 	}
+
 	response.Success(ctx, data)
 }
