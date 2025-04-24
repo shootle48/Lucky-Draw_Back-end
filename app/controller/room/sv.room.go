@@ -115,3 +115,29 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIDRoom) error {
 	_, err = s.db.NewDelete().Model((*model.Room)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
 }
+
+// new function
+func (s *Service) ListAll(ctx context.Context, id request.GetByIDRoom) (*response.ListAllRoomResponse, error) {
+	room := &model.Room{}
+	err := s.db.NewSelect().
+		Model(room).
+		Relation("Players").
+		Relation("Prizes").
+		Relation("Prizes.Winners").
+		Relation("Prizes.DrawConditions").
+		Relation("DrawConditions").
+		Relation("Winners").
+		Where("room.id = ?", id.ID).
+		Scan(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &response.ListAllRoomResponse{
+		Players:        room.Players,
+		Prizes:         room.Prizes,
+		DrawConditions: room.DrawConditions,
+		Winners:        room.Winners,
+	}, nil
+}

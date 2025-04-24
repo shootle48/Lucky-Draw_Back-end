@@ -130,3 +130,21 @@ func (ctl *Controller) Delete(ctx *gin.Context) {
 	}
 	response.Success(ctx, nil)
 }
+
+func (ctl *Controller) ListAll(ctx *gin.Context) {
+	ID := request.GetByIDRoom{}
+	if err := ctx.BindUri(&ID); err != nil {
+		logger.Errf(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, err := ctl.Service.ListAll(ctx, ID)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+
+	response.Success(ctx, data)
+}

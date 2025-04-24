@@ -18,6 +18,6 @@ func Player(router *gin.RouterGroup) {
 		player.GET("/list", ctl.PlayerCtl.List)
 		player.GET("/:id", ctl.PlayerCtl.Get)
 		player.DELETE("/:id", ctl.PlayerCtl.Delete)
-		player.POST("/impost", ctl.PlayerCtl.ImportCSV)
+		player.POST("/import", ctl.PlayerCtl.ImportCSV)
 	}
 }
