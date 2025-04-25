@@ -1,11 +1,11 @@
 package request
 
 type CreateDrawCondition struct {
-	RoomID         string `json:"room_id"`
-	PrizeID        string `json:"prize_id"`
-	FilterStatus   string `json:"filter_status"`
-	FilterPosition string `json:"filter_position"`
-	Quantity       int64  `json:"quantity"`
+	RoomID         string   `json:"room_id"`
+	PrizeID        string   `json:"prize_id"`
+	FilterStatus   string   `json:"filter_status"`
+	FilterPosition []string `json:"filter_position"`
+	Quantity       int64    `json:"quantity"`
 }
 
 type UpdateDrawCondition struct {
