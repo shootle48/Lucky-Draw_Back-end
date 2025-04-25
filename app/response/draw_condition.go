@@ -14,5 +14,6 @@ type PreviewPlayer struct {
 	Prefix    string `bun:"prefix" json:"prefix"`
 	FirstName string `bun:"first_name" json:"first_name"`
 	LastName  string `bun:"last_name" json:"last_name"`
+	MemberID  string `bun:"member_id" json:"member_id"`
 	Position  string `bun:"position" json:"position"`
 }

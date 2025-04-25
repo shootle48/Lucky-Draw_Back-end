@@ -140,7 +140,7 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIDDrawCondition) e
 func (s *Service) PreviewPlayer(ctx context.Context, req request.PreviewPlayers) ([]response.PreviewPlayer, error) {
 	query := s.db.NewSelect().
 		TableExpr("players AS p").
-		Column("p.id", "p.prefix", "p.first_name", "p.last_name", "p.position").
+		Column("p.id", "p.prefix", "p.first_name", "p.last_name", "p.member_id", "p.position").
 		Where("p.room_id = ?", req.RoomID).
 		Where("p.deleted_at IS NULL")
 
