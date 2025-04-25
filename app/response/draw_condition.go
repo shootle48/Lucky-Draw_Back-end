@@ -16,4 +16,5 @@ type PreviewPlayer struct {
 	LastName  string `bun:"last_name" json:"last_name"`
 	MemberID  string `bun:"member_id" json:"member_id"`
 	Position  string `bun:"position" json:"position"`
+	IsWinner  bool   `json:"is_winner"`
 }

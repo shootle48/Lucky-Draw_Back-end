@@ -138,20 +138,31 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIDDrawCondition) e
 
 // new function
 func (s *Service) PreviewPlayer(ctx context.Context, req request.PreviewPlayers) ([]response.PreviewPlayer, error) {
+	subQuery := s.db.NewSelect().
+		Table("winners").
+		Column("player_id").
+		Where("deleted_at IS NULL")
+
 	query := s.db.NewSelect().
 		TableExpr("players AS p").
 		Column("p.id", "p.prefix", "p.first_name", "p.last_name", "p.member_id", "p.position").
 		Where("p.room_id = ?", req.RoomID).
 		Where("p.deleted_at IS NULL")
 
-	if len(req.FilterPosition) > 0 {
+	// if len(req.FilterPosition) > 0 {
+	// 	query = query.Where("p.position IN (?)", bun.In(req.FilterPosition))
+	// }
+
+	if len(req.FilterPosition) == 0 {
+		return []response.PreviewPlayer{}, nil
+	} else {
 		query = query.Where("p.position IN (?)", bun.In(req.FilterPosition))
 	}
 
 	if req.FilterStatus == "received" {
-		query = query.Where("p.is_active = true")
+		query = query.Where("p.id::text IN (?)", subQuery)
 	} else if req.FilterStatus == "not_received" {
-		query = query.Where("p.is_active = false")
+		query = query.Where("p.id::text NOT IN (?)", subQuery)
 	}
 
 	var players []response.PreviewPlayer
