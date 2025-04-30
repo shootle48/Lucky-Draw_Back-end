@@ -4,6 +4,7 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -125,4 +126,17 @@ func (ctl *Controller) Delete(ctx *gin.Context) {
 		return
 	}
 	response.Success(ctx, nil)
+}
+
+// new function
+
+func (ctl *Controller) DashboardByRoomID(c *gin.Context) {
+	roomID := c.Param("room_id")
+
+	result, err := ctl.Service.DashboardByRoomID(c.Request.Context(), roomID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }

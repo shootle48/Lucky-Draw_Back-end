@@ -10,8 +10,9 @@ type DrawCondition struct {
 	ID             string   `json:"id" bun:",pk,type:uuid,default:gen_random_uuid()"`
 	RoomID         string   `bun:"room_id,notnull"`
 	PrizeID        string   `bun:"prize_id,notnull"`
-	FilterStatus   string   `bun:"filter_status,notnull"`
+	FilterStatus   []string `bun:"filter_status,notnull"`
 	FilterPosition []string `json:"filter_position" bun:"filter_position,type:jsonb"`
+	FilterIsActive bool     `json:"filter_is_active" bun:"filter_is_active,type:boolean,default:false,notnull"`
 	Quantity       int64    `bun:"quantity,notnull"`
 
 	Room  *Room  `bun:"rel:belongs-to,join:room_id=id"`

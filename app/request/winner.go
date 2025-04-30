@@ -5,6 +5,7 @@ type CreateWinner struct {
 	PlayerID        string `json:"player_id"`
 	PrizeID         string `json:"prize_id"`
 	DrawConditionID string `json:"draw_condition_id"`
+	PlayerStatus    string `json:"player_status"`
 }
 
 type UpdateWinner struct {

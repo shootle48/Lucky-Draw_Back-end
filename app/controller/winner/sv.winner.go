@@ -11,6 +11,15 @@ import (
 	"strings"
 )
 
+func contains(strs []string, target string) bool {
+	for _, s := range strs {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) Create(ctx context.Context, req request.CreateWinner) (*response.ListWinnerDetail, bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -52,14 +61,35 @@ func (s *Service) Create(ctx context.Context, req request.CreateWinner) (*respon
 		return nil, false, err
 	}
 
-	_, err = tx.NewUpdate().
-		Model((*model.Prize)(nil)).
-		Set("quantity = quantity - ?", drawCondition.Quantity).
-		Where("id = ?", req.PrizeID).
-		Where("quantity >= ?", drawCondition.Quantity).
-		Exec(ctx)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to update prize quantity: %w", err)
+	if req.PlayerStatus == "not_received" {
+		_, err = tx.NewUpdate().
+			Model((*model.Player)(nil)).
+			Set("status = ?", "received").
+			Where("id = ?", req.PlayerID).
+			Exec(ctx)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to update player status: %w", err)
+		}
+
+		_, err = tx.NewUpdate().
+			Model((*model.Prize)(nil)).
+			// Set("quantity = quantity - ?", drawCondition.Quantity).
+			Set("quantity = quantity - 1").
+			Where("id = ?", req.PrizeID).
+			Where("quantity >= ?", drawCondition.Quantity).
+			Exec(ctx)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to update prize quantity: %w", err)
+		}
+	} else if req.PlayerStatus == "no_show" || req.PlayerStatus == "waive" {
+		_, err = tx.NewUpdate().
+			Model((*model.Player)(nil)).
+			Set("status = ?", req.PlayerStatus).
+			Where("id = ?", req.PlayerID).
+			Exec(ctx)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to update player status: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -77,13 +107,18 @@ func (s *Service) Create(ctx context.Context, req request.CreateWinner) (*respon
 		ColumnExpr("p.first_name").
 		ColumnExpr("p.last_name").
 		ColumnExpr("p.position").
+		ColumnExpr("p.member_id").
+		ColumnExpr("p.is_active").
+		ColumnExpr("p.status").
 		ColumnExpr("w.prize_id::uuid").
 		ColumnExpr("pr.name AS prize_name").
 		ColumnExpr("pr.image_url").
 		ColumnExpr("w.draw_condition_id::uuid").
 		ColumnExpr("dc.filter_status").
 		ColumnExpr("dc.filter_position").
+		ColumnExpr("dc.filter_is_active").
 		ColumnExpr("dc.quantity").
+		ColumnExpr("w.created_at").
 		Join("JOIN rooms r ON r.id = w.room_id::uuid").
 		Join("JOIN players p ON p.id = w.player_id::uuid").
 		Join("JOIN prizes pr ON pr.id = w.prize_id::uuid").
@@ -142,12 +177,11 @@ func (s *Service) List(ctx context.Context, req request.ListWinner) ([]response.
 		Where("w.deleted_at IS NULL")
 
 	if req.Search != "" {
-		search := fmt.Sprintf("%" + strings.ToLower(req.Search) + "%")
 		if req.SearchBy != "" {
 			search := strings.ToLower(req.Search)
-			query.Where(fmt.Sprintf("LOWER(w.%s) LIKE ?", req.SearchBy), search)
+			query.Where(fmt.Sprintf("LOWER(w.%s) LIKE ?", req.SearchBy), "%"+search+"%")
 		} else {
-			query.Where("LOWER(w.id::text) LIKE ?", search)
+			query.Where("w.room_id::uuid = ?", req.Search)
 		}
 	}
 
@@ -189,4 +223,67 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIDWinner) error {
 	// data, err := s.db.NewDelete().Table("room").Where("id = ?", id.ID).Exec(ctx)
 	_, err = s.db.NewDelete().Model((*model.Winner)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
+}
+
+// new function
+
+func (s *Service) DashboardByRoomID(ctx context.Context, roomID string) (*response.WinnerDashboard, error) {
+	var winners []response.ListWinnerDetail
+	err := s.db.NewSelect().
+		TableExpr(`
+			(
+				SELECT DISTINCT ON (w.player_id) 
+                w.id::uuid,
+                w.room_id::uuid,
+                r.name AS room_name,
+                w.player_id::uuid,
+                p.prefix,
+                p.first_name,
+                p.last_name,
+                p.position,
+                p.member_id,
+                p.is_active,
+                p.status,
+                w.prize_id::uuid,
+                pr.name AS prize_name,
+                pr.image_url,
+                pr.quantity,
+                w.draw_condition_id::uuid,
+                dc.filter_status,
+                dc.filter_position,
+                dc.filter_is_active,
+                dc.quantity,
+                w.created_at
+            FROM winners w
+            JOIN rooms r ON r.id = w.room_id::uuid
+            JOIN players p ON p.id = w.player_id::uuid
+            JOIN prizes pr ON pr.id = w.prize_id::uuid
+            JOIN draw_conditions dc ON dc.id = w.draw_condition_id::uuid
+            WHERE w.room_id = ?
+            ORDER BY w.player_id, w.created_at DESC
+        ) AS latest_winners
+		`, roomID).
+		Scan(ctx, &winners)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get winners: %w", err)
+	}
+
+	var prizes []response.PrizeDashboard
+	err = s.db.NewSelect().
+		TableExpr("prizes AS pr").
+		ColumnExpr("pr.id::uuid").
+		ColumnExpr("pr.room_id::uuid").
+		ColumnExpr("pr.name").
+		ColumnExpr("pr.image_url").
+		ColumnExpr("pr.quantity").
+		Where("pr.room_id = ?", roomID).
+		Scan(ctx, &prizes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get prizes: %w", err)
+	}
+
+	return &response.WinnerDashboard{
+		Winners: winners,
+		Prizes:  prizes,
+	}, nil
 }

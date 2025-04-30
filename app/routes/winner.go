@@ -18,6 +18,7 @@ func WinnerRoutes(router *gin.RouterGroup) {
 		winner.GET("/list", ctl.WinnerCtl.List)
 		winner.GET("/:id", ctl.WinnerCtl.Get)
 		winner.DELETE("/:id", ctl.WinnerCtl.Delete)
+		winner.GET("/room/:room_id", ctl.WinnerCtl.DashboardByRoomID)
 
 	}
 }

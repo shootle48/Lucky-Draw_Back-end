@@ -8,6 +8,7 @@ type CreatePlayer struct {
 	Position  string `json:"position"`
 	RoomID    string `json:"room_id"`
 	IsActive  bool   `json:"is_active"`
+	Status    string `json:"status"`
 }
 
 type UpdatePlayer struct {
@@ -35,4 +36,5 @@ type CreatePlayerIM struct {
 	Position  string `json:"position" binding:"required"`
 	RoomID    string `json:"room_id" binding:"required"`
 	IsActive  bool   `json:"is_active"`
+	Status    string `json:"status"`
 }

@@ -17,7 +17,7 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
-	_, mserr, err := ctl.Service.Create(ctx, body)
+	data, mserr, err := ctl.Service.Create(ctx, body)
 	if err != nil {
 		ms := "internal server error"
 		if mserr {
@@ -28,7 +28,9 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
-	response.Success(ctx, nil)
+	response.Success(ctx, gin.H{
+		"id": data.ID,
+	})
 }
 
 func (ctl *Controller) Update(ctx *gin.Context) {
@@ -72,8 +74,8 @@ func (ctl *Controller) List(ctx *gin.Context) {
 		req.Page = 1
 	}
 
-	if req.Page == 0 {
-		req.Page = 10
+	if req.Size == 0 {
+		req.Size = 10
 	}
 
 	if req.OrderBy == "" {
@@ -137,6 +139,24 @@ func (ctl *Controller) PreviewPlayer(ctx *gin.Context) {
 	}
 
 	data, err := ctl.Service.PreviewPlayer(ctx, req)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+
+	response.Success(ctx, data)
+}
+
+func (ctl *Controller) GetDrawConditionPreview(ctx *gin.Context) {
+	ID := request.GetByIDDrawCondition{}
+	if err := ctx.BindUri(&ID); err != nil {
+		logger.Errf(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, err := ctl.Service.GetDrawConditionPreview(ctx, ID.ID)
 	if err != nil {
 		logger.Errf(err.Error())
 		response.InternalError(ctx, err.Error())

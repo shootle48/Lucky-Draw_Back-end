@@ -15,6 +15,7 @@ type Player struct {
 	Position  string `bun:"position,notnull"`
 	RoomID    string `bun:"room_id,unique:member_room,notnull"`
 	IsActive  bool   `bun:"is_active,type:boolean,default:false,notnull"`
+	Status    string `bun:"status,default:'not_received',notnull"`
 
 	Room *Room `bun:"rel:belongs-to,join:room_id=id"`
 
